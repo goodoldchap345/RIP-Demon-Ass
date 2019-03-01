@@ -37,26 +37,13 @@ def convertOutput(outputs):#function which converts output router information fr
 
     return outputData#return a list of output routers, which are each represented by a list containing their port number, metric value and router id
 
-def performConfigTests(routerID, inputPorts, outputs, timeoutValue, periodicValue):#function which tests the data from the config file
-
-    if "\n" in inputPorts:#performs check that all input ports are in one line
-        print("Config data invalid, ports not in one line. Ending program")
-        return
-
-    inputPorts = inputPorts.split()#split inputPorts from string to list of strings
-    for i in range(0, len(inputPorts)):
-        inputPorts[i] = int(inputPorts[i])
-
-    if "\n" in outputs:
-        print("Config data invalid, ports not in one line. Ending program")
-        return
-    outputData = convertOutput(outputs)
-
+def performConfigTests(routerID, inputPorts, outputData, timeoutValue, periodicValue):#function which tests the data from the config file
+    
     if ((routerID < 1) or (routerID > 64000)):#if ID outside of valid range
         return False
-
+    
     usedPortNumbers = []#creates a list to check if an input port number has already been used
-
+    
     for inputPortNumber in inputPorts:#for each port number in the list
         if ((inputPortNumber < 1024) or (inputPortNumber > 64000)):#if the number is outside of the range
             return False
@@ -64,9 +51,9 @@ def performConfigTests(routerID, inputPorts, outputs, timeoutValue, periodicValu
             return False
         else:
             usedPortNumbers.append(inputPortNumber)#if not, add the port number
-
+            
     for outputPortData in outputData:#for each output port data entry
-        if((outputPortData[0] < 1024) or (outputPortdata[0] > 64000)):#if the output port number is out of range
+        if((outputPortData[0] < 1024) or (outputPortData[0] > 64000)):#if the output port number is out of range
             return False
         elif(outputPortData[0] in usedPortNumbers):#if the port number s already used
             return False
@@ -110,11 +97,9 @@ def createRoutingTable(outputData):#initialises the routing table for the router
     #[port of the pair router, metric value of link to the router, router id of the router] converts to
     #routerID, address,first router to destination, metric, time of last update
     routingTable = []#initialise routing table
-    routingCount = 0
     for outputRouter in outputData:#for each router in the outputData
         routerData = [outputRouter[2], outputRouter[0], outputRouter[2], outputRouter[1], time.time()]#the entry into the routing table will be as follows for the initial neighbours
-        routingTable[routingCount] = routerData#insert the router into the routertable
-        routingCount = routingCount + 1
+        routingTable.append(routerData)#insert the router into the routertable
 
     return routingTable
 
@@ -200,16 +185,24 @@ def main():
     inputPorts = inputPorts.split(",")
 
     outputs = configParser.get('RIP_Demon_Parameters', 'outputs').split(",")#assigns outputs to be a list of the output values as strings.
-
+    
     timeoutValue = configParser.get('RIP_Demon_Parameters', 'timeoutValue')
     periodicValue = configParser.get('RIP_Demon_Parameters', 'periodicValue')
     timeoutValue = int(timeoutValue)
     periodicValue = int(periodicValue)
     
+    if "\n" in inputPorts:#performs check that all input ports are in one line
+        print("Config data invalid, ports not in one line. Ending program")
+        return
+
+    if "\n" in outputs:
+        print("Config data invalid, ports not in one line. Ending program")
+        return    
+    
     inputPorts = [int(j) for j in inputPorts]
     outputData = convertOutput(outputs)
-
-    if (performConfigTests(routerID, inputPorts, outputs, timeoutValue, periodicValue) == False):
+    
+    if (performConfigTests(routerID, inputPorts, outputData, timeoutValue, periodicValue) == False):
         print("Configuration file invalid, ending program")
         return
 
@@ -217,9 +210,8 @@ def main():
 
     inputCount = 0 #initialise count of input ports for naming purposes
     for inputPort in inputPorts:#for each input port number I have
-        socketList[inputCount] = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)#create another socket
-        socketList[inputCount].bind(socket.gethostname(), inputPort)#bind the socket with the port number
-        socketList[inputCount].listen()#begin listening to the socket
+        socketList.append(socket.socket(socket.AF_INET, socket.SOCK_DGRAM))#create another socket
+        socketList[inputCount].bind((socket.gethostname(), inputPort))#bind the socket with the port number
         inputCount = inputCount + 1#increment to create next socket with next port number
 
     routingTable = createRoutingTable(outputData)#format routerID, address,first router to destination, metric, time since last update
@@ -233,6 +225,7 @@ def main():
         #need to create random offset for time waited but it's bugging out##errormarker
 
         if (time.time() >= timeSincePeriodicResponse + periodicValue/10 * random.randint(8,12)):#if the periodic value of time has passed
+            print("fuck")
             timeSincePeriodicResponse = time.time()#set time since response to be current time
             routerResponse = composeResponse(routingTable, routerID)#compose the response packet
             for neighbouringRouter in outputData:#for each neighbour
@@ -251,8 +244,7 @@ def main():
         #errormarker i think below here for loop isn't needed, use select to listen simultaneously
 
         for inputSocket in socketList:#for every socket created
-            readable, writeable, exceptional = select.select(inputs, outputs, inputs)#initialise select
-            socketReady = select.select(([inputSocket], [], []))#assign boolean of whether or not input socket is ready
+            socketReady = select.select([inputSocket], [], [])#assign boolean of whether or not input socket is ready
 
             if socketReady[0]:#if something is receivable from this port number
                 packetReceived = inputSocket.recvfrom(4096)#recive it and assign it to packetReceived
