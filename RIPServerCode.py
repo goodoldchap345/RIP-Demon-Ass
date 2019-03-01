@@ -223,13 +223,14 @@ def main():
         #This loop needs to constantly monitor for incoming messages and update internal routing table accordingly, as well as sending out schedulued messages containing its internal routing table to its neighbours. Also, needs to handle neighbour shutdowns after timeout
 
         #need to create random offset for time waited but it's bugging out##errormarker
-
-        if (time.time() >= timeSincePeriodicResponse + periodicValue/10 * random.randint(8,12)):#if the periodic value of time has passed
-            print("fuck")
-            timeSincePeriodicResponse = time.time()#set time since response to be current time
-            routerResponse = composeResponse(routingTable, routerID)#compose the response packet
-            for neighbouringRouter in outputData:#for each neighbour
-                socketList[0].sendto(routerResponse, (socketList[0].gethostname(), neighbouringRouter[0]))#use a socket to send the update
+        offset = periodicValue * random.randint(8,12)/10
+        while(1):
+            if (time.time() >= timeSincePeriodicResponse + offset):#if the periodic value of time has passed
+                timeSincePeriodicResponse = time.time()#set time since response to be current time
+                routerResponse = composeResponse(routingTable, routerID)#compose the response packet
+                for neighbouringRouter in outputData:#for each neighbour
+                    socketList[0].sendto(routerResponse, (socketList[0].gethostname(), neighbouringRouter[0]))#use a socket to send the update
+                break
         #above can be made into a function later
 
         routesChecked = 0
