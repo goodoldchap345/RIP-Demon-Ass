@@ -209,12 +209,10 @@ def updateRoutingTable(packetReceived, routingTable, neighbourList):#updates rou
 
 def main():
     configurationFile = str(sys.argv[1])#take the file path and name of the config file from the command line
-    
     configParser = configparser.RawConfigParser()#set up the configuration parser to read config files
     configParser.read(configurationFile)#read the file
-    
-    routerID = configParser.get('RIP_Demon_Parameters', 'routerID')#Assigns local integer routerID to
 
+    routerID = configParser.get('RIP_Demon_Parameters', 'routerID')#Assigns local integer routerID to
     #be the integer value of routerID in the config file with header [RIP_Demon_Parameters]
     routerID = int(routerID)
     

@@ -1,0 +1,7 @@
+[RIP_Demon_Parameters]
+
+routerID = 1
+inputPorts = 10000,10001
+outputs = 20000-7-2,20001-1-5
+timeoutValue = 18
+periodicValue = 3

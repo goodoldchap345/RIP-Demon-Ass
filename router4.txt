@@ -1,0 +1,6 @@
+[RIP_Demon_Parameters]
+
+routerID = "4"
+inputPorts = "20005,10006"
+outputs = "10005-2-3,20006-2-5"
+timerValues = "18,3"
