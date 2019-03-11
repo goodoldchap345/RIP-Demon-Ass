@@ -13,10 +13,11 @@ The following is an example of my configuration files, to assist with understand
 
 [RIP_Demon_Parameters]
 
-routerID = "1"
-inputPorts = "6110,6201,7345"
-outputs = "5000-1-1, 5002-5-4"
-timerValues = "180,30"
+routerID = 1
+inputPorts = 10000,10001
+outputs = 20000-7-2,20001-1-5
+timeoutValue = 18
+periodicValue = 3
 
 '''
 
@@ -258,25 +259,41 @@ def main():
 
     timeSincePeriodicResponse = time.time()#initialise time
 
+    #while(1):
+    #This loop needs to constantly monitor for incoming messages and update internal routing table accordingly, as well as sending out schedulued messages containing its internal routing table to its neighbours. Also, needs to handle neighbour shutdowns after timeout
+    print(routingTable)
+    #need to create random offset for time waited but it's bugging out##errormarker
+    offset = periodicValue * random.randint(8,12)/10
     while(1):
-        #This loop needs to constantly monitor for incoming messages and update internal routing table accordingly, as well as sending out schedulued messages containing its internal routing table to its neighbours. Also, needs to handle neighbour shutdowns after timeout
-        print(routingTable)
-        #need to create random offset for time waited but it's bugging out##errormarker
-        offset = periodicValue * random.randint(8,12)/10
-        while(1):
-            if (time.time() >= timeSincePeriodicResponse + offset):#if the periodic value of time has passed
-                timeSincePeriodicResponse = time.time()#set time since response to be current time
-                print("Sending periodic response")
-                for neighbouringRouter in outputData:#for each neighbour
-                    routerResponse = composeResponse(routingTable, routerID,neighbouringRouter[2])#compose the response packet
-                    socketList[0].sendto(routerResponse, ('127.0.0.1', neighbouringRouter[0]))#use a socket to send the update
-                    
-                    #marker above is local ip, need to get it dynamically
-                break
+        if (time.time() >= timeSincePeriodicResponse + offset):#if the periodic value of time has passed
+            timeSincePeriodicResponse = time.time()#set time since response to be current time
+            offset = periodicValue * random.randint(8,12)/10
+            print("Sending periodic response")
+            for neighbouringRouter in outputData:#for each neighbour
+                routerResponse = composeResponse(routingTable, routerID,neighbouringRouter[2])#compose the response packet
+                socketList[0].sendto(routerResponse, ('127.0.0.1', neighbouringRouter[0]))#use a socket to send the update
+                
+                #marker above is local ip, need to get it dynamically
+        
+        
+            #hangmeifthisdoesntwork
+            inputReady,outputReady,exceptReady = select.select(socketList, [], [],0)#assign boolean of whether or not input socket is ready
+            for inputSocket in inputReady:#for every socket created
+                packetReceived = inputSocket.recvfrom(4096)#receive it and assign it to packetReceived
+                #now we need to process it-check validity of incoming package, update routing table
+                if (performPacketChecks(packetReceived, routerID) == False):#if test failed
+                    print("failed checks")
+                    continue#ignore this packet
+                else:
+                    neighbourIDs = []
+                    for dataItem in outputData:
+                        neighbourIDs.append(dataItem[2])
+                    routingTable = updateRoutingTable(packetReceived, routingTable,neighbourIDs)#update routing table
+            
         #above can be made into a function later
-
+        '''
         routesChecked = 0
-        '''for route in routingTable:#for each route in the table
+        for route in routingTable:#for each route in the table
             if (time.time() - route[4] > timeoutValue):#if the time elapsed passed the timeout value
                 routingTable[routesChecked] = None#check if none will bug out #errormarker
                 #send triggered update
@@ -284,11 +301,11 @@ def main():
                 for neighbouringRouter in outputData:#for each neighbour
                     routerResponse = composeResponse(routingTable, routerID, neighbouringRouter)#compose the response packet
                     socketList[0].sendto(routerResponse, (socketList[0].gethostname(), neighbouringRouter[0]))#use a socket to send the update
-            routesChecked = routesChecked + 1'''
+            routesChecked = routesChecked + 1
 
         #errormarker i think below here for loop isn't needed, use select to listen simultaneously
 
-
+        
         #hangmeifthisdoesntwork
         inputReady,outputReady,exceptReady = select.select(socketList, [], [],0)#assign boolean of whether or not input socket is ready
         for inputSocket in inputReady:#for every socket created
@@ -303,7 +320,7 @@ def main():
                     neighbourIDs.append(dataItem[2])
                 routingTable = updateRoutingTable(packetReceived, routingTable,neighbourIDs)#update routing table
 
-        """
+        
         for inputSocket in socketList:#for every socket created
             socketReady = select.select([inputSocket], [], [])#assign boolean of whether or not input socket is ready
 
@@ -314,6 +331,6 @@ def main():
                     continue#ignore this packet
                 else:
                     routingTable = updateRoutingTable(packetReceived, routingTable)#update routing table
-        """
+        '''
 
 main()
